@@ -20,4 +20,4 @@
 # WandB Params
 "ENTITY": ""
 "PROJECT": "jaxmarl-mpe"
-"WANDB_MODE" : "disabled"
+"WANDB_MODE" : "online"

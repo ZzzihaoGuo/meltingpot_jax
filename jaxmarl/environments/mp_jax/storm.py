@@ -41,7 +41,7 @@ from jaxmarl.environments.multi_agent_env import MultiAgentEnv
 from jaxmarl.environments import spaces
 
 
-from jaxmarl.environments.storm.rendering import (
+from jaxmarl.environments.mp_jax.rendering import (
     downsample,
     fill_coords,
     highlight_img,
@@ -76,12 +76,15 @@ class EnvParams:
 class Actions(IntEnum):
     left = 0
     right = 1
-    forward = 2
-    stay = 3
-    zap_forward = 4
-    zap_ahead = 5
-    zap_right = 6
-    zap_left = 7
+    up = 2
+    down = 3
+    stay = 4
+    turn_left = 5
+    turn_right = 6
+    # zap_forward = 4
+    # zap_ahead = 5
+    # zap_right = 6
+    # zap_left = 7
 
 class Items(IntEnum):
     empty = 0
@@ -92,24 +95,31 @@ class Items(IntEnum):
 
 ROTATIONS = jnp.array(
     [
-        [0, 0, 1],  # turn left
+        # [0, 0, 1],  # turn left
+        # [0, 0, -1],  # turn right
+        # [0, 0, 0],  # forward
+        # [0, 0, 0],  # stay
+        # [0, 0, 0],  # zap forward
+        # [0, 0, 0],  # zap ahead
+        # [0, 0, 0],  # zap right
+        # [0, 0, 0],  # zap left
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 1], # turn left
         [0, 0, -1],  # turn right
-        [0, 0, 0],  # forward
-        [0, 0, 0],  # stay
-        [0, 0, 0],  # zap forward
-        [0, 0, 0],  # zap ahead
-        [0, 0, 0],  # zap right
-        [0, 0, 0],  # zap left
     ],
     dtype=jnp.int8,
 )
 
 STEP = jnp.array(
     [
-        [0, 1, 0],  # up
-        [1, 0, 0],  # right
-        [0, -1, 0],  # down
         [-1, 0, 0],  # left
+        [1, 0, 0],  # right
+        [0, 1, 0],  # up
+        [0, -1, 0],  # down
     ],
     dtype=jnp.int8,
 )
@@ -172,7 +182,7 @@ class InTheMatrix(MultiAgentEnv):
         GRID = GRID.at[:, self.PADDING - 1].set(5)
         self.GRID = GRID.at[:, self.GRID_SIZE + self.PADDING].set(5)
 
-        self.SPAWNS = jnp.concat(
+        self.SPAWNS = jnp.concatenate(
             jax.vmap(
                 jax.vmap(
                     lambda x, y: jnp.array([x, y], dtype=jnp.int16),
@@ -1138,16 +1148,16 @@ class InTheMatrix(MultiAgentEnv):
                 and index 3 is the new freeze penalty matrix.
             '''
             # if interact
-            zaps = jnp.isin(actions,
-                jnp.array(
-                    [
-                        Actions.zap_forward,
-                        Actions.zap_ahead,
-                        Actions.zap_right,
-                        Actions.zap_left
-                    ]
-                )
-            )
+            # zaps = jnp.isin(actions,
+            #     jnp.array(
+            #         [
+            #             Actions.zap_forward,
+            #             Actions.zap_ahead,
+            #             Actions.zap_right,
+            #             Actions.zap_left
+            #         ]
+            #     )
+            # )
 
             interact_idx = jnp.int16(Items.interact)
 
@@ -1190,7 +1200,7 @@ class InTheMatrix(MultiAgentEnv):
                 lambda p: p + STEP[p[2]]
             )(state.agent_locs)
 
-            one_step_targets = jax.vmap(clip)(one_step_targets)
+            # one_step_targets = jax.vmap(clip)(one_step_targets)
 
             one_step_interacts = jax.vmap(
                 check_valid_zap
@@ -1201,7 +1211,7 @@ class InTheMatrix(MultiAgentEnv):
                 lambda p: p + 2*STEP[p[2]]
             )(state.agent_locs)
 
-            two_step_targets = jax.vmap(clip)(two_step_targets)
+            # two_step_targets = jax.vmap(clip)(two_step_targets)
 
             two_step_interacts = jax.vmap(
                 check_valid_zap
@@ -1265,15 +1275,15 @@ class InTheMatrix(MultiAgentEnv):
 
             # clipping all interactions to between 0 and 3 to index the correct
             # interaction bool from all_interacts
-            interact_idxs = jnp.clip(
-                actions - Actions.zap_forward,
-                0,
-                Actions.zap_left - Actions.zap_forward
-            )
-            all_interacts = all_interacts[
-                jnp.arange(all_interacts.shape[0]),
-                interact_idxs
-            ] * zaps * agent_pickups * (state.freeze.max(axis=-1) <= 0)
+            # interact_idxs = jnp.clip(
+            #     actions - Actions.zap_forward,
+            #     0,
+            #     Actions.zap_left - Actions.zap_forward
+            # )
+            # all_interacts = all_interacts[
+            #     jnp.arange(all_interacts.shape[0]),
+            #     interact_idxs
+            # ] * zaps * agent_pickups * (state.freeze.max(axis=-1) <= 0)
 
             # update grid with all zaps
             aux_grid = jnp.copy(state.grid)
@@ -1333,25 +1343,25 @@ class InTheMatrix(MultiAgentEnv):
                 axis=0
             )
 
-            it_fr = jnp.where(
-                all_interacts.any(),
-                fix_interactions(
-                    key,
-                    all_interacts,
-                    actions,
-                    state,
-                    o_items,
-                    t_items,
-                    r_items,
-                    l_items
-                ),
-                it_fr
-            )
+            # it_fr = jnp.where(
+            #     all_interacts.any(),
+            #     fix_interactions(
+            #         key,
+            #         all_interacts,
+            #         actions,
+            #         state,
+            #         o_items,
+            #         t_items,
+            #         r_items,
+            #         l_items
+            #     ),
+            #     it_fr
+            # )
             items, new_freezes = it_fr[0], it_fr[1:]
 
-            qualified_to_zap = zaps * agent_pickups * (
-                state.freeze.max(axis=-1) <= 0
-            )
+            # qualified_to_zap = zaps * agent_pickups * (
+            #     state.freeze.max(axis=-1) <= 0
+            # )
 
             # update grid
             def update_grid(a_i, t, i, grid):
@@ -1363,18 +1373,18 @@ class InTheMatrix(MultiAgentEnv):
                     )
                 )
 
-            aux_grid = update_grid(qualified_to_zap, one_step_targets, o_items, aux_grid)
-            aux_grid = update_grid(qualified_to_zap, two_step_targets, t_items, aux_grid)
-            aux_grid = update_grid(qualified_to_zap, target_right, r_items, aux_grid)
-            aux_grid = update_grid(qualified_to_zap, target_left, l_items, aux_grid)
+            # aux_grid = update_grid(qualified_to_zap, one_step_targets, o_items, aux_grid)
+            # aux_grid = update_grid(qualified_to_zap, two_step_targets, t_items, aux_grid)
+            # aux_grid = update_grid(qualified_to_zap, target_right, r_items, aux_grid)
+            # aux_grid = update_grid(qualified_to_zap, target_left, l_items, aux_grid)
 
-            state = state.replace(
-                grid=jnp.where(
-                    jnp.any(zaps),
-                    aux_grid,
-                    state.grid
-                )
-            )
+            # state = state.replace(
+            #     grid=jnp.where(
+            #         jnp.any(zaps),
+            #         aux_grid,
+            #         state.grid
+            #     )
+            # )
 
             # rewards
             _rewards = jax.vmap(
@@ -1444,11 +1454,11 @@ class InTheMatrix(MultiAgentEnv):
             actions = jnp.array(actions)
 
             # freeze check
-            actions = jnp.where(
-                state.freeze.max(axis=-1) > 0,
-                Actions.stay,
-                actions
-            )
+            # actions = jnp.where(
+            #     state.freeze.max(axis=-1) > 0,
+            #     Actions.stay,
+            #     actions
+            # )
 
             # moving all agents
             all_new_locs = jax.vmap(
@@ -1459,13 +1469,13 @@ class InTheMatrix(MultiAgentEnv):
                 )
             )(p=state.agent_locs, a=actions)
 
-            agent_move = actions == Actions.forward
+            agent_move = (actions == Actions.up) | (actions == Actions.down) | (actions == Actions.right) | (actions == Actions.left)
             all_new_locs = jax.vmap(
-                lambda m, n, p: jnp.where(m, n + STEP[p[2]], n)
+                lambda m, n, p: jnp.where(m, n + STEP[p], n)
             )(
                 m=agent_move,
                 n=all_new_locs,
-                p=state.agent_locs
+                p=actions
             )
             all_new_locs = jax.vmap(
                 jnp.clip,
@@ -1975,7 +1985,7 @@ class InTheMatrix(MultiAgentEnv):
         img = onp.zeros(
             shape=(tile_size * subdivs, tile_size * subdivs, 3),
             dtype=onp.uint8,
-        )
+        ) + 254
 
         # Draw the grid lines (top and left edges)
         fill_coords(img, point_in_rect(0, 0.031, 0, 1), (100, 100, 100))
@@ -2043,7 +2053,7 @@ class InTheMatrix(MultiAgentEnv):
             )
             fill_coords(img, tri_fn, agent_color)
 
-        # Highlight the cell if needed
+        # # Highlight the cell if needed
         if highlight:
             highlight_img(img)
 

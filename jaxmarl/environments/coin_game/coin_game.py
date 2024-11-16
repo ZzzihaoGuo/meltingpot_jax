@@ -57,17 +57,21 @@ class CoinGame(MultiAgentEnv):
 
     def __init__(
         self,
-        num_inner_steps: int = 10,
-        num_outer_steps: int = 10,
+        num_inner_steps: int = 300,
+        num_outer_steps: int = 300,
         cnn: bool = False,
         egocentric: bool = False,
-        shared_rewards: bool = False,
+        shared_rewards: bool = True,
         payoff_matrix=[[1, 1, -2], [1, 1, -2]],
+        map_size = 11,
+        num_agents=2
     ):
 
-        super().__init__(num_agents=2)
-        self.agents = [str(i) for i in list(range(2))]
+        super().__init__(num_agents=num_agents)
+        self.num_agents = num_agents
+        self.agents = [str(i) for i in list(range(self.num_agents))]
         self.payoff_matrix = payoff_matrix
+        self.map_size = map_size
 
         # helper functions
         def _update_stats(
@@ -106,28 +110,26 @@ class CoinGame(MultiAgentEnv):
             counter = state.counter + jnp.zeros_like(
                 state.counter, dtype=jnp.int16
             ).at[idx].set(1)
-            coop1 = state.coop1 + jnp.zeros_like(
-                state.counter, dtype=jnp.int16
-            ).at[idx].set(rr)
-            coop2 = state.coop2 + jnp.zeros_like(
-                state.counter, dtype=jnp.int16
-            ).at[idx].set(bb)
+            # coop1 = state.coop1 + jnp.zeros_like(
+            #     state.counter, dtype=jnp.int16
+            # ).at[idx] #.set(rr)
+            # coop2 = state.coop2 + jnp.zeros_like(
+            #     state.counter, dtype=jnp.int16
+            # ).at[idx] #.set(bb)
+            coop1 = state.coop1
+            coop2 = state.coop2
             convention = jnp.stack([convention_1, convention_2]).reshape(2)
             return counter, coop1, coop2, convention
 
         def _abs_position(state: EnvState) -> jnp.ndarray:
-            obs1 = jnp.zeros((3, 3, 4), dtype=jnp.int8)
-            obs2 = jnp.zeros((3, 3, 4), dtype=jnp.int8)
+            obs1 = jnp.zeros((self.map_size, self.map_size, 4), dtype=jnp.int8)
+            obs2 = jnp.zeros((self.map_size, self.map_size, 4), dtype=jnp.int8)
 
             # obs channels are [red_player, blue_player, red_coin, blue_coin]
             obs1 = obs1.at[state.red_pos[0], state.red_pos[1], 0].set(1)
             obs1 = obs1.at[state.blue_pos[0], state.blue_pos[1], 1].set(1)
-            obs1 = obs1.at[
-                state.red_coin_pos[0], state.red_coin_pos[1], 2
-            ].set(1)
-            obs1 = obs1.at[
-                state.blue_coin_pos[0], state.blue_coin_pos[1], 3
-            ].set(1)
+            obs1 = obs1.at[state.red_coin_pos[0], state.red_coin_pos[1], 2].set(1)
+            obs1 = obs1.at[state.blue_coin_pos[0], state.blue_coin_pos[1], 3].set(1)
 
             # each agent has egotistic color (so thinks they are red)
             obs2 = jnp.stack(
@@ -155,12 +157,12 @@ class CoinGame(MultiAgentEnv):
             agent_loc = jnp.array([state.red_pos[0], state.red_pos[1]])
             ego_offset = jnp.ones(2, dtype=jnp.int8) - agent_loc
 
-            rel_other_player = (state.blue_pos + ego_offset) % 3
-            rel_red_coin = (state.red_coin_pos + ego_offset) % 3
-            rel_blue_coin = (state.blue_coin_pos + ego_offset) % 3
+            rel_other_player = (state.blue_pos + ego_offset) % self.map_size
+            rel_red_coin = (state.red_coin_pos + ego_offset) % self.map_size
+            rel_blue_coin = (state.blue_coin_pos + ego_offset) % self.map_size
 
             # create observation
-            obs = jnp.zeros((3, 3, 4), dtype=jnp.int8)
+            obs = jnp.zeros((self.map_size, self.map_size, 4), dtype=jnp.int8)
             obs = obs.at[1, 1, 0].set(1)
             obs = obs.at[rel_other_player[0], rel_other_player[1], 1].set(1)
             obs = obs.at[rel_red_coin[0], rel_red_coin[1], 2].set(1)
@@ -205,8 +207,28 @@ class CoinGame(MultiAgentEnv):
             actions: Tuple[int, int],
         ):
             action_0, action_1 = list(actions.values())
-            new_red_pos = (state.red_pos + MOVES[action_0]) % 3
-            new_blue_pos = (state.blue_pos + MOVES[action_1]) % 3
+
+            new_red_pos = (state.red_pos + MOVES[action_0]) % self.map_size
+            new_blue_pos = (state.blue_pos + MOVES[action_1]) % self.map_size
+
+            # make border 
+            # new_red_pos = (state.red_pos + MOVES[action_0])
+            # new_blue_pos = (state.blue_pos + MOVES[action_1])
+
+            # if (state.red_pos + MOVES[action_0])[0] >= self.map_size or (state.red_pos + MOVES[action_0])[0] < 0 or (state.red_pos + MOVES[action_0])[1] >= self.map_size or (state.red_pos + MOVES[action_0])[1] < 0:
+            #     new_red_pos = state.red_pos
+            # else:
+            #     new_red_pos = (state.red_pos + MOVES[action_0])
+
+            # if (state.blue_pos + MOVES[action_1])[0] >= self.map_size or (state.blue_pos + MOVES[action_1])[0] < 0 or (state.blue_pos + MOVES[action_1])[1] >= self.map_size or (state.blue_pos + MOVES[action_1])[1] < 0:
+            #     new_blue_pos = state.blue_pos
+            # else:
+            #     new_blue_pos = (state.blue_pos + MOVES[action_1])
+
+            # if (new_red_pos == new_blue_pos).all():
+            #     new_red_pos = state.red_pos
+            #     new_blue_pos = state.blue_pos
+
             red_reward, blue_reward = 0, 0
 
             red_red_matches = jnp.all(
@@ -261,7 +283,7 @@ class CoinGame(MultiAgentEnv):
 
             key, subkey = jax.random.split(key)
             new_random_coin_poses = jax.random.randint(
-                subkey, shape=(2, 2), minval=0, maxval=3
+                subkey, shape=(2, 2), minval=0, maxval=self.map_size
             )
             new_red_coin_pos = jnp.where(
                 jnp.logical_or(red_red_matches, blue_red_matches),
@@ -274,18 +296,24 @@ class CoinGame(MultiAgentEnv):
                 state.blue_coin_pos,
             )
 
-            next_red_coop = state.red_coop + jnp.zeros(
-                num_outer_steps, dtype=jnp.int8
-            ).at[state.outer_t].set(red_red_matches)
-            next_red_defect = state.red_defect + jnp.zeros(
-                num_outer_steps, dtype=jnp.int8
-            ).at[state.outer_t].set(red_blue_matches)
-            next_blue_coop = state.blue_coop + jnp.zeros(
-                num_outer_steps, dtype=jnp.int8
-            ).at[state.outer_t].set(blue_blue_matches)
-            next_blue_defect = state.blue_defect + jnp.zeros(
-                num_outer_steps, dtype=jnp.int8
-            ).at[state.outer_t].set(blue_red_matches)
+            # next_red_coop = state.red_coop + jnp.zeros(
+            #     num_outer_steps, dtype=jnp.int8
+            # ).at[state.outer_t].set(red_red_matches)
+            # next_red_defect = state.red_defect + jnp.zeros(
+            #     num_outer_steps, dtype=jnp.int8
+            # ).at[state.outer_t].set(red_blue_matches)
+            # next_blue_coop = state.blue_coop + jnp.zeros(
+            #     num_outer_steps, dtype=jnp.int8
+            # ).at[state.outer_t].set(blue_blue_matches)
+            # next_blue_defect = state.blue_defect + jnp.zeros(
+            #     num_outer_steps, dtype=jnp.int8
+            # ).at[state.outer_t].set(blue_red_matches)
+            next_red_coop = state.red_coop
+            next_red_defect = state.red_defect
+            next_blue_coop = state.blue_coop
+            next_blue_defect = state.blue_defect
+
+            # to do 
 
             next_state = EnvState(
                 red_pos=new_red_pos,
@@ -350,8 +378,11 @@ class CoinGame(MultiAgentEnv):
             red_reward = jnp.where(reset_inner, 0.0, red_reward)
 
             if shared_rewards:
+                rewards = {}
                 # shared reward (social welfare\sum of agents individual rewards)
+                # to do
                 rewards = {agent: reward for agent, reward in zip(self.agents, (sum((red_reward, blue_reward)),  sum((red_reward, blue_reward))))}
+                # rewards['0'] = rewards_two['0']
             else:
                 # individual reward
                 rewards = {agent: reward for agent, reward in zip(self.agents, (red_reward, blue_reward))}
@@ -373,7 +404,7 @@ class CoinGame(MultiAgentEnv):
         ) -> Tuple[jnp.ndarray, EnvState]:
             key, subkey = jax.random.split(key)
             all_pos = jax.random.randint(
-                subkey, shape=(4, 2), minval=0, maxval=3
+                subkey, shape=(4, 2), minval=0, maxval=self.map_size
             )
 
             empty_stats = jnp.zeros((num_outer_steps), dtype=jnp.int8)
@@ -422,12 +453,12 @@ class CoinGame(MultiAgentEnv):
 
     def observation_space(self) -> spaces.Box:
         """Observation space of the environment."""
-        _shape = (3, 3, 4) if self.cnn else (36,)
+        _shape = (self.map_size, self.map_size, 4) if self.cnn else (self.map_size**2 * 4,)
         return spaces.Box(low=0, high=1, shape=_shape, dtype=jnp.uint8)
 
     def state_space(self) -> spaces.Dict:
         """State space of the environment."""
-        _shape = (3, 3, 4) if self.cnn else (36,)
+        _shape = (self.map_size, self.map_size, 4) if self.cnn else (self.map_size**2 * 4,)
         return spaces.Box(low=0, high=1, shape=_shape, dtype=jnp.uint8)
 
     def render(self, state: EnvState):
@@ -439,64 +470,102 @@ class CoinGame(MultiAgentEnv):
         from PIL import Image
 
         """Small utility for plotting the agent's state."""
-        fig = Figure((5, 2))
+        fig = Figure((7, 4))
         canvas = FigureCanvas(fig)
         ax = fig.add_subplot(121)
         ax.imshow(
-            np.zeros((3, 3)),
+            np.zeros((self.map_size, self.map_size)),
             cmap="Greys",
             vmin=0,
             vmax=1,
             aspect="equal",
             interpolation="none",
             origin="lower",
-            extent=[0, 3, 0, 3],
+            extent=[0, self.map_size, 0, self.map_size],
         )
         ax.set_aspect("equal")
 
         # ax.margins(0)
-        ax.set_xticks(jnp.arange(1, 4))
-        ax.set_yticks(jnp.arange(1, 4))
+        ax.set_xticks(jnp.arange(1, self.map_size+1))
+        ax.set_yticks(jnp.arange(1, self.map_size+1))
         ax.grid()
         red_pos = jnp.squeeze(state.red_pos)
         blue_pos = jnp.squeeze(state.blue_pos)
         red_coin_pos = jnp.squeeze(state.red_coin_pos)
         blue_coin_pos = jnp.squeeze(state.blue_coin_pos)
-        ax.annotate(
-            "R",
-            fontsize=20,
-            color="red",
-            xy=(red_pos[0], red_pos[1]),
-            xycoords="data",
-            xytext=(red_pos[0] + 0.5, red_pos[1] + 0.5),
-        )
-        ax.annotate(
-            "B",
-            fontsize=20,
-            color="blue",
-            xy=(blue_pos[0], blue_pos[1]),
-            xycoords="data",
-            xytext=(blue_pos[0] + 0.5, blue_pos[1] + 0.5),
-        )
-        ax.annotate(
-            "Rc",
-            fontsize=20,
-            color="red",
-            xy=(red_coin_pos[0], red_coin_pos[1]),
-            xycoords="data",
-            xytext=(red_coin_pos[0] + 0.3, red_coin_pos[1] + 0.3),
-        )
-        ax.annotate(
-            "Bc",
-            color="blue",
-            fontsize=20,
-            xy=(blue_coin_pos[0], blue_coin_pos[1]),
-            xycoords="data",
-            xytext=(
-                blue_coin_pos[0] + 0.3,
-                blue_coin_pos[1] + 0.3,
-            ),
-        )
+
+
+
+        from matplotlib.patches import Circle, Rectangle
+        color = "red"
+
+        c1 = Circle(
+                    (red_pos[0]+0.5, red_pos[1]+0.5),
+                    0.3,
+                    color=color,
+                )
+
+        ax.add_patch(c1)
+
+        r1 = Rectangle(
+                    (red_coin_pos[0]+0.4, red_coin_pos[1]+0.4),
+                    0.2, 0.2,
+                    color=color,
+                )
+
+        ax.add_patch(r1)
+
+
+        color = "blue"
+        c2 = Circle(
+                    (blue_pos[0]+0.5, blue_pos[1]+0.5),
+                    0.3,
+                    color=color,
+                )
+
+        ax.add_patch(c2)
+
+        r2 = Rectangle(
+                    (blue_coin_pos[0]+0.4, blue_coin_pos[1]+0.4),
+                    0.2, 0.2,
+                    color=color,
+                )
+        ax.add_patch(r2)
+        # ax.annotate(
+        #     "R",
+        #     fontsize=20,
+        #     color="red",
+        #     xy=(red_pos[0], red_pos[1]),
+        #     xycoords="data",
+        #     xytext=(red_pos[0] + 0.5, red_pos[1] + 0.5),
+        # )
+        # ax.annotate(
+        #     "B",
+        #     fontsize=20,
+        #     color="blue",
+        #     xy=(blue_pos[0], blue_pos[1]),
+        #     xycoords="data",
+        #     xytext=(blue_pos[0] + 0.5, blue_pos[1] + 0.5),
+        # )
+        # ax.annotate(
+        #     "Rc",
+        #     fontsize=20,
+        #     color="red",
+        #     xy=(red_coin_pos[0], red_coin_pos[1]),
+        #     xycoords="data",
+        #     xytext=(red_coin_pos[0] + 0.3, red_coin_pos[1] + 0.3),
+        # )
+        # ax.annotate(
+        #     "Bc",
+        #     color="blue",
+        #     fontsize=20,
+        #     xy=(blue_coin_pos[0], blue_coin_pos[1]),
+        #     xycoords="data",
+        #     xytext=(
+        #         blue_coin_pos[0] + 0.3,
+        #         blue_coin_pos[1] + 0.3,
+        #     ),
+        # )
 
         ax2 = fig.add_subplot(122)
         ax2.text(0.0, 0.95, "Timestep: %s" % (state.inner_t))

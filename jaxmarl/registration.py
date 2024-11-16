@@ -97,6 +97,9 @@ def make(env_id: str, **env_kwargs):
         env = InTheGrid_2p(**env_kwargs)
     elif env_id == "storm_np":
         env = InTheMatrix(**env_kwargs)
+
+    elif env_id == "meltingpot_base":
+        env = InTheMatrix(**env_kwargs)
     
     # 6. Hanabi
     elif env_id == "hanabi":
@@ -146,4 +149,5 @@ registered_envs = [
     "overcooked",
     "coin_game",
     "jaxnav",
+    "meltingpot_base"
 ]

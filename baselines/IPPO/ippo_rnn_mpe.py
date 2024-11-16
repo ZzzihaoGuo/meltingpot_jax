@@ -139,12 +139,22 @@ def make_train(config):
         # INIT NETWORK
         network = ActorCriticRNN(env.action_space(env.agents[0]).n, config=config)
         rng, _rng = jax.random.split(rng)
+        # init_x = (
+        #     jnp.zeros(
+        #         (1, config["NUM_ENVS"], env.observation_space(env.agents[0]).shape[0])
+        #     ),
+        #     jnp.zeros((1, config["NUM_ENVS"])),
+        # )
+
         init_x = (
             jnp.zeros(
-                (1, config["NUM_ENVS"], env.observation_space(env.agents[0]).shape[0])
+                (1, config["NUM_ENVS"], env.observation_space().shape[0])
             ),
             jnp.zeros((1, config["NUM_ENVS"])),
         )
+
+        # init_x = jnp.zeros(env.observation_space().shape)
+
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], config["GRU_HIDDEN_DIM"])
         network_params = network.init(_rng, init_hstate, init_x)
         if config["ANNEAL_LR"]:

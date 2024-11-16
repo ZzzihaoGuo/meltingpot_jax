@@ -29,6 +29,8 @@ layout = overcooked_layouts["cramped_room"]
 # Instantiate environment
 env = make('overcooked', layout=layout, max_steps=max_steps)
 
+
+
 obs, state = env.reset(key_r)
 print('list of agents in environment', env.agents)
 
@@ -57,4 +59,4 @@ for s in state_seq:
     time.sleep(0.25)
 
 # # Or save an animation
-# viz.animate(state_seq, agent_view_size=5, filename='animation.gif')
+viz.animate(state_seq, agent_view_size=5, filename='animation.gif')

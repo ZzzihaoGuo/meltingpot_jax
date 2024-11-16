@@ -465,6 +465,12 @@ def main(config):
     train_jit = jax.jit(make_train(config), device=jax.devices()[0])
     out = train_jit(rng)
 
+    plt.plot(out["metrics"]["returned_episode_returns"].mean(axis=0))
+    plt.savefig(f"ippo_ff_{config['ENV_NAME']}.png")
+    plt.xlabel("Updates")
+    plt.ylabel("Returns")
+    plt.title(f"IPPO-RNN={config['ENV_NAME']}")
+
 
 if __name__ == "__main__":
     main()
