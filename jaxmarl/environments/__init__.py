@@ -19,7 +19,8 @@ from .switch_riddle import SwitchRiddle
 from .overcooked import Overcooked, overcooked_layouts
 from .mabrax import Ant, Humanoid, Hopper, Walker2d, HalfCheetah
 from .hanabi import Hanabi
-from .mp_jax import InTheGrid, InTheGrid_2p, InTheMatrix
+from .harvest_common_open import InTheGrid, InTheMatrix
 from .coin_game import CoinGame
 from .jaxnav import JaxNav
+# from .storm_org import InTheGrid, InTheMatrix
 

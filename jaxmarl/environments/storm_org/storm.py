@@ -41,7 +41,7 @@ from jaxmarl.environments.multi_agent_env import MultiAgentEnv
 from jaxmarl.environments import spaces
 
 
-from jaxmarl.environments.storm.rendering import (
+from jaxmarl.environments.storm_org.rendering import (
     downsample,
     fill_coords,
     highlight_img,
@@ -1265,11 +1265,9 @@ class InTheMatrix(MultiAgentEnv):
 
             # clipping all interactions to between 0 and 3 to index the correct
             # interaction bool from all_interacts
-            interact_idxs = jnp.clip(
-                actions - Actions.zap_forward,
-                0,
-                Actions.zap_left - Actions.zap_forward
-            )
+            interact_idxs = jnp.clip(actions - Actions.zap_forward, 0, Actions.zap_left - Actions.zap_forward)
+
+
             all_interacts = all_interacts[
                 jnp.arange(all_interacts.shape[0]),
                 interact_idxs
@@ -2105,12 +2103,12 @@ class InTheMatrix(MultiAgentEnv):
                     )
                 
                 agent_hat = False
-                for a in range(self.num_agents):
-                    agent_hat = (
-                        bool(state.agent_invs[a].sum() > INTERACT_THRESHOLD)
-                        if agent_here[a]
-                        else agent_hat
-                    )
+                # for a in range(self.num_agents):
+                #     agent_hat = (
+                #         bool(state.agent_invs[a].sum() > INTERACT_THRESHOLD)
+                #         if agent_here[a]
+                #         else agent_hat
+                #     )
 
                 tile_img = self.render_tile(
                     cell,

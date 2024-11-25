@@ -1,0 +1,31 @@
+"LR": 0.0005
+"NUM_ENVS": 12
+"NUM_STEPS": 100
+"TOTAL_TIMESTEPS": 5e6
+"UPDATE_EPOCHS": 2
+"NUM_MINIBATCHES": 16
+"GAMMA": 0.99
+"GAE_LAMBDA": 0.95
+"CLIP_EPS": 0.2
+"ENT_COEF": 0.01
+"VF_COEF": 0.5
+"MAX_GRAD_NORM": 0.5
+"ACTIVATION": "relu"
+"ENV_NAME": "harvest_common_open"
+"REW_SHAPING_HORIZON": 2.5e6 # for how many timesteps add a shaping reward
+"ENV_KWARGS": 
+  # "layout" : "counter_circuit"
+  # "grid_size" : (16,22)
+  "num_agents" : 7
+  "num_inner_steps" : 1000
+  
+
+"ANNEAL_LR": True
+"SEED": 30
+"NUM_SEEDS": 1
+"TUNE": False
+
+# WandB Params
+"ENTITY": ""
+"PROJECT": ""
+"WANDB_MODE" : "online"
